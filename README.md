@@ -5,8 +5,8 @@ Unify panics as an `error`, but retain the ability to distinguish it as a `Panic
 
 # Go routine panic recovery
 
-recovery.GoRecovered launches a goroutine.
-Note that the function given to GoRecovered returns an error, whereas a normal go routine does not.
+recovery.Go launches a goroutine.
+Note that the function given to recovery.Go returns an error, whereas a normal go routine does not.
 Panics are returned to the error handling function as a `PanicError`.
 
 ``` go
@@ -20,7 +20,7 @@ errHandler := func(err error) {
 	}
 }
 
-recovery.GoRecovered(errHandler, func() error {
+recovery.Go(errHandler, func() error {
 		panic("panic")
 		return nil
 })
@@ -31,9 +31,9 @@ recovery.GoRecovered(errHandler, func() error {
 Recover a panic for a normal function, no go routines.
 
 ``` go
-err = recovery.RecoveredCall(func() error {
+err = recovery.Call(func() error {
 		panic("panic")
 })
 ```
 
-There are also variants that allow the called function to return results in addition to an error: RecoveredCall1, RecoveredCall2, RecoveredCall3.
+There are also variants that allow the called function to return results in addition to an error: Call1, Call2, Call3.

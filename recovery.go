@@ -36,10 +36,10 @@ func (e ThrownError) Error() string {
 	return e.Unwrap().Error()
 }
 
-// RecoveredCall is a helper function which allows you to easily recover from panics in the given function parameter "fn".
+// Call is a helper function which allows you to easily recover from panics in the given function parameter "fn".
 // If fn returns an error, that will be returned.
-// If a panic occurs, RecoveredCall will convert it to a PanicError and return it.
-func RecoveredCall(fn func() error) (err error) {
+// If a panic occurs, Call will convert it to a PanicError and return it.
+func Call(fn func() error) (err error) {
 	// the returned variable distinguishes the case of panic(nil)
 	returned := false
 	defer func() {
@@ -49,7 +49,7 @@ func RecoveredCall(fn func() error) (err error) {
 			if r == nil {
 				r = PanicError{Panic: r}
 			}
-			err = RecoverToError(r)
+			err = ToError(r)
 		}
 	}()
 	result := fn()
@@ -57,44 +57,44 @@ func RecoveredCall(fn func() error) (err error) {
 	return result
 }
 
-// Same as RecoveredCall but support returning 1 result in addition to the error.
-func RecoveredCall1[T any](fn func() (T, error)) (T, error) {
+// Same as Call but support returning 1 result in addition to the error.
+func Call1[T any](fn func() (T, error)) (T, error) {
 	var t T
-	return t, RecoveredCall(func() error {
+	return t, Call(func() error {
 		var err error
 		t, err = fn()
 		return err
 	})
 }
 
-// Same as RecoveredCall but support returning 2 results in addition to the error.
-func RecoveredCall2[T any, U any](fn func() (T, U, error)) (T, U, error) {
+// Same as Call but support returning 2 results in addition to the error.
+func Call2[T any, U any](fn func() (T, U, error)) (T, U, error) {
 	var t T
 	var u U
-	return t, u, RecoveredCall(func() error {
+	return t, u, Call(func() error {
 		var err error
 		t, u, err = fn()
 		return err
 	})
 }
 
-// Same as RecoveredCall but support returning 3 results in addition to the error.
-func RecoveredCall3[T any, U any, V any](fn func() (T, U, V, error)) (T, U, V, error) {
+// Same as Call but support returning 3 results in addition to the error.
+func Call3[T any, U any, V any](fn func() (T, U, V, error)) (T, U, V, error) {
 	var t T
 	var u U
 	var v V
-	return t, u, v, RecoveredCall(func() error {
+	return t, u, v, Call(func() error {
 		var err error
 		t, u, v, err = fn()
 		return err
 	})
 }
 
-// GoRecovered allows you to easily handle panics when spawning go routines.
+// Go allows you to easily handle panics when spawning go routines.
 // Instead of your program crashing, the panic is converted to a PanicError and given to the errorHandler
-func GoRecovered(errorHandler func(err error), fn func() error) {
+func Go(errorHandler func(err error), fn func() error) {
 	go func() {
-		e := RecoveredCall(func() error {
+		e := Call(func() error {
 			return fn()
 		})
 		if e != nil {
@@ -106,7 +106,7 @@ func GoRecovered(errorHandler func(err error), fn func() error) {
 // Wrap panic values in a PanicError.
 // nil is returned as nil so this function can be called direclty with the result of recover()
 // A ThrownError or a PanicError are returned as is.
-func RecoverToError(r interface{}) error {
+func ToError(r interface{}) error {
 	switch r := r.(type) {
 	// A Go panic
 	case PanicError:
