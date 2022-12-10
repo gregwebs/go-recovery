@@ -38,8 +38,8 @@ func (e ThrownError) Error() string {
 
 
 // RecoveredCall is a helper function which allows you to easily recover from panics in the given function parameter "fn".
-// If a panic occurs, RecoveredCall will convert it to an error and return it.
-// If fn returns an error, that will also be returned
+// If fn returns an error, that will be returned.
+// If a panic occurs, RecoveredCall will convert it to a PanicError and return it.
 func RecoveredCall(fn func() error) (err error) {
 	// the returned variable distinguishes the case of panic(nil)
 	returned := false
@@ -58,9 +58,41 @@ func RecoveredCall(fn func() error) (err error) {
 	return result
 }
 
-// GoRecovered allows you to easily handle panics when using the "go" keyword.
-// Instead of your program crashing, give the panic to the errorHandler
-// Panics are converted to an error and given to the "errorHandler" function.
+// Same as RecoveredCall but support returning 1 result in addition to the error.
+func RecoveredCall1[T any](fn func() (T, error)) (T, error) {
+	var t T
+	return t, RecoveredCall(func() error {
+		var err error
+		t, err = fn()
+		return err
+	})
+}
+
+// Same as RecoveredCall but support returning 2 results in addition to the error.
+func RecoveredCall2[T any, U any](fn func() (T, U, error)) (T, U, error) {
+	var t T
+	var u U
+	return t, u, RecoveredCall(func() error {
+		var err error
+		t, u, err = fn()
+		return err
+	})
+}
+
+// Same as RecoveredCall but support returning 3 results in addition to the error.
+func RecoveredCall3[T any, U any, V any](fn func() (T, U, V, error)) (T, U, V, error) {
+	var t T
+	var u U
+	var v V
+	return t, u, v, RecoveredCall(func() error {
+		var err error
+		t, u, v, err = fn()
+		return err
+	})
+}
+
+// GoRecovered allows you to easily handle panics when spawning go routines.
+// Instead of your program crashing, the panic is converted to a PanicError and given to the errorHandler
 func GoRecovered(errorHandler func(err error), fn func() error) {
 	go func() {
 		e := RecoveredCall(func() error {
@@ -73,9 +105,9 @@ func GoRecovered(errorHandler func(err error), fn func() error) {
 }
 
 
-// Convert panics values to PanicError.
-// nil is returned as nil so this can be called direclty with the result of recover()
-// A ThrownError or an existing PanicError is returned as is
+// Wrap panic values in a PanicError.
+// nil is returned as nil so this function can be called direclty with the result of recover()
+// A ThrownError or a PanicError are returned as is.
 func RecoverToError(r interface{}) error {
         switch r := r.(type) {
 	// A Go panic
