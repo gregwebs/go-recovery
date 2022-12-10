@@ -4,7 +4,7 @@ import "fmt"
 
 // A Panic that was converted to an error.
 type PanicError struct {
-        Panic any
+	Panic any
 }
 
 func (p PanicError) Unwrap() error {
@@ -25,7 +25,7 @@ func (p PanicError) Error() string {
 // An error that was intentionally thrown via panic
 // Pass it through without wrapping it as a PanicError
 type ThrownError struct {
-        Err error
+	Err error
 }
 
 func (e ThrownError) Unwrap() error {
@@ -35,7 +35,6 @@ func (e ThrownError) Unwrap() error {
 func (e ThrownError) Error() string {
 	return e.Unwrap().Error()
 }
-
 
 // RecoveredCall is a helper function which allows you to easily recover from panics in the given function parameter "fn".
 // If fn returns an error, that will be returned.
@@ -48,7 +47,7 @@ func RecoveredCall(fn func() error) (err error) {
 		if !returned && err == nil {
 			// the case of panic(nil)
 			if r == nil {
-				r = PanicError{ Panic: r }
+				r = PanicError{Panic: r}
 			}
 			err = RecoverToError(r)
 		}
@@ -104,12 +103,11 @@ func GoRecovered(errorHandler func(err error), fn func() error) {
 	}()
 }
 
-
 // Wrap panic values in a PanicError.
 // nil is returned as nil so this function can be called direclty with the result of recover()
 // A ThrownError or a PanicError are returned as is.
 func RecoverToError(r interface{}) error {
-        switch r := r.(type) {
+	switch r := r.(type) {
 	// A Go panic
 	case PanicError:
 		return r
@@ -118,6 +116,6 @@ func RecoverToError(r interface{}) error {
 	case nil:
 		return nil
 	default:
-                return PanicError{ Panic: r }
-        }
+		return PanicError{Panic: r}
+	}
 }
