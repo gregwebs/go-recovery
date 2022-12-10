@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/gregwebs/recovery"
-	"github.com/gregwebs/try/assert"
+	"github.com/gregwebs/go-recovery"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestRecoveredCall(t *testing.T) {
@@ -22,7 +22,6 @@ func TestRecoveredCall(t *testing.T) {
 	})
 	assert.NotNil(t, err)
 	assert.Equal(t, "panic", err.Error())
-
 }
 
 func TestGoRecovered(t *testing.T) {
@@ -50,4 +49,26 @@ func TestGoRecovered(t *testing.T) {
 	})
 	<-wait
 	<-wait
+}
+
+func TestRecoveredCallThrown(t *testing.T) {
+	thrown := recovery.ThrownError{ Err: fmt.Errorf("thrown error") }
+	err := recovery.RecoveredCall(func() error {
+		return thrown
+	})
+	assert.NotNil(t, err)
+	assert.Equal(t, thrown, err)
+	assert.Equal(t, "thrown error", err.Error())
+	err = recovery.RecoveredCall(func() error {
+		panic(thrown)
+	})
+	assert.NotNil(t, err)
+	assert.Equal(t, thrown, err)
+	assert.Equal(t, "thrown error", err.Error())
+
+	err = recovery.RecoveredCall(func() error {
+			panic("panic")
+	})
+	assert.NotNil(t, err)
+	assert.Equal(t, recovery.PanicError{ Panic: "panic" }, err)
 }

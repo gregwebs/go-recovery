@@ -1,5 +1,7 @@
 package recovery
 
+import "fmt"
+
 // A Panic that was converted to an error.
 type PanicError struct {
         Panic any
@@ -20,18 +22,33 @@ func (p PanicError) Error() string {
 	}
 }
 
+// An error that was intentionally thrown via panic
+// Pass it through without wrapping it as a PanicError
+type ThrownError struct {
+        Err error
+}
+
+func (e ThrownError) Unwrap() error {
+	return e.Err
+}
+
+func (e ThrownError) Error() string {
+	return e.Unwrap().Error()
+}
+
+
 // RecoveredCall is a helper function which allows you to easily recover from panics in the given function parameter "fn".
 // If a panic occurs, RecoveredCall will convert it to an error and return it.
 // If fn returns an error, that will also be returned
 func RecoveredCall(fn func() error) (err error) {
-	// the returned variable handles the case of panic(nil)
+	// the returned variable distinguishes the case of panic(nil)
 	returned := false
 	defer func() {
 		r := recover()
 		if !returned && err == nil {
 			// the case of panic(nil)
 			if r == nil {
-				r = PanicError{ Pancic: r }
+				r = PanicError{ Panic: r }
 			}
 			err = RecoverToError(r)
 		}
@@ -56,34 +73,19 @@ func GoRecovered(errorHandler func(err error), fn func() error) {
 }
 
 
-// Convert panics to PanicError. A non-runtime error will be returned as is
-// Please Note: nil is returned as nil
+// Convert panics values to PanicError.
+// nil is returned as nil so this can be called direclty with the result of recover()
+// A ThrownError or an existing PanicError is returned as is
 func RecoverToError(r interface{}) error {
         switch r := r.(type) {
 	// A Go panic
-        case runtime.Error:
-		return PanicError{ Panic: r }
-        case error:
+	case PanicError:
+		return r
+	case ThrownError:
 		return r
 	case nil:
 		return nil
 	default:
                 return PanicError{ Panic: r }
-        }
-}
-
-func CatchHandlePanic(errorHandler func(error), panicHandler func(v any)) {
-        r := recover()
-        if r == nil {
-                return
-        }
-        if err := ErrorFromRecover(r); err != nil {
-                errorHandler(err)
-        } else {
-                if panicHandler == nil {
-                        panic(r)
-                } else {
-                        panicHandler(r)
-                }
         }
 }
