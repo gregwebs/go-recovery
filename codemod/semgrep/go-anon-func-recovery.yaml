@@ -1,0 +1,27 @@
+rules:
+- id: go-anon-func-recovery
+  languages:
+    - go
+  message: |
+    use recovery.Go to catch panics
+  patterns:
+    - pattern-inside: |
+        go func(){
+          ...
+        }()
+    - pattern: |
+        func(){
+          $...EXP
+        }()
+    - pattern-not: |
+        func(){
+          recovery.Go(func() error {
+            ...
+          })
+        }()
+  fix: |
+    go recovery.Go(func() error {
+        $...EXP
+        return nil
+    })
+  severity: WARNING

@@ -1,0 +1,22 @@
+rules:
+- id: go-func-recovery
+  languages:
+    - go
+  message: |
+    Use recovery.Go to catch panics.
+    WARNING this autofix changes how arguments are evaluated.
+  patterns:
+    - pattern: |
+        go $FN($...ARGS)
+    - metavariable-comparison:
+        metavariable: $FN
+        comparison: $FN != "func"
+    - metavariable-comparison:
+        metavariable: $FN
+        comparison: $FN != "recovery.Go"
+  fix: |
+    go recovery.Go(func() error {
+      $FN($...ARGS)
+      return nil
+    })
+  severity: WARNING

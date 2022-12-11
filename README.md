@@ -3,7 +3,9 @@
 Helpers for catching panics, including in goroutines.
 Unify panics as an `error`, but retain the ability to distinguish it as a `PanicError`.
 
-# Go routine panic recovery
+# Usage
+
+## Go routine panic recovery
 
 recovery.Go helps handle goroutine panics and errors.
 Note that the function given to recovery.Go returns an error, whereas a normal go routine does not.
@@ -41,15 +43,26 @@ recovery.GoHandler(errHandler, func() error {
 })
 ```
 
-# Function panic recovery
+## Function panic recovery
 
-Recover a panic for a normal function call and return the error.
+Recover a panic for a normal function call (not a goroutine) and return the error.
 
 ``` go
 err = recovery.Call(func() error {
-		panic("panic")
+	panic("panic")
 })
 ```
 
 There are also variants that allow the called function to return results in addition to an error: `Call1`, `Call2`, `Call3`.
-There are two helpers `Throw` and `Throwf` for panicing an error without wrapping it as a `PanicError`.
+There are two helpers `Throw` and `Throwf` for panicing an error that will avoid wrapping it as a `PanicError`.
+
+# Codemod
+
+There are semgrep rules to help with upgrading existing go routines:
+
+	for rule in ../go-recovery/codemod/semgrep/* ; do ; semgrep --config $rule ; done
+
+However, there is an issue with the upgrade rules that could introduce defects.
+For non-anonymous function and method calls, it delays the evaluation of the arguments
+
+Additionally, it doesn't upgrade anonymous functions that are called with arguments, e.g. `go func(x int) {}(1)`.

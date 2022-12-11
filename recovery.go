@@ -117,7 +117,7 @@ func Go(fn func() error) {
 // Instead of your program crashing, a panic is converted to a PanicError.
 // The panic or a returned error is given to the errorHandler function.
 //
-//	go GoHandler(handler, func(err error) { ... })
+//	go GoHandler(handler, func() error { ... })
 func GoHandler(errorHandler func(err error), fn func() error) {
 	e := Call(func() error {
 		return fn()
