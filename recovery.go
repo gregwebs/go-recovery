@@ -1,6 +1,9 @@
 package recovery
 
-import "fmt"
+import (
+	"fmt"
+	"log"
+)
 
 // A Panic that was converted to an error.
 type PanicError struct {
@@ -90,17 +93,38 @@ func Call3[T any, U any, V any](fn func() (T, U, V, error)) (T, U, V, error) {
 	})
 }
 
-// Go allows you to easily handle panics when spawning go routines.
-// Instead of your program crashing, the panic is converted to a PanicError and given to the errorHandler
-func Go(errorHandler func(err error), fn func() error) {
-	go func() {
-		e := Call(func() error {
-			return fn()
-		})
-		if e != nil {
-			errorHandler(e)
-		}
-	}()
+// The default ErrorHandler is DefaultErrorHandler
+var ErrorHandler func(error) = DefaultErrorHandler
+
+// The DefaultErrorHandler prints the error with log.Printf
+func DefaultErrorHandler(err error) {
+	log.Printf("go routine error: %+v", err)
+}
+
+// Go is designed to use as an entry point to a go routine.
+//
+//	go recovery.Go(func() error { ... })
+//
+// Instead of your program crashing, the panic is converted to a PanicError.
+// The panic or a returned error is given to the global ErrorHandler function.
+// Change the behavior globally by setting the ErrorHandler package variable.
+// Or use GoHandler to set the error handler on a local basis.
+func Go(fn func() error) {
+	GoHandler(ErrorHandler, fn)
+}
+
+// GoHandler is designed to be used when creating go routines to handle panics and errors.
+// Instead of your program crashing, a panic is converted to a PanicError.
+// The panic or a returned error is given to the errorHandler function.
+//
+//	go GoHandler(handler, func(err error) { ... })
+func GoHandler(errorHandler func(err error), fn func() error) {
+	e := Call(func() error {
+		return fn()
+	})
+	if e != nil {
+		errorHandler(e)
+	}
 }
 
 // Wrap panic values in a PanicError.
@@ -112,10 +136,28 @@ func ToError(r interface{}) error {
 	case PanicError:
 		return r
 	case ThrownError:
-		return r
+		return r.Err
 	case nil:
 		return nil
 	default:
 		return PanicError{Panic: r}
 	}
+}
+
+// Throw will panic an error as a ThrownError.
+// The error will be returned by Call* functions as a normal error rather than a PanicError.
+// Useful with CallX functions to avoid writing out zero values when prototyping.
+//
+//	func (x int) (int, error) {
+//		recovery.Call1(func() (int, error) {
+//			recovery.Throw(err)
+//		}
+//	}
+func Throw(err error) {
+	panic(ThrownError{Err: err})
+}
+
+// A convenience function for calling Throw(fmt.Errorf(...))
+func Throwf(format string, args ...interface{}) {
+	Throw(fmt.Errorf(format, args...))
 }

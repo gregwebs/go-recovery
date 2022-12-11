@@ -5,11 +5,26 @@ Unify panics as an `error`, but retain the ability to distinguish it as a `Panic
 
 # Go routine panic recovery
 
-recovery.Go launches a goroutine.
+recovery.Go helps handle goroutine panics and errors.
 Note that the function given to recovery.Go returns an error, whereas a normal go routine does not.
-Panics are returned to the error handling function as a `PanicError`.
 
 ``` go
+// This will crash your program
+go func() {
+	panic("panic")
+}
+
+// This will not crash your program
+// By default it logs the panic
+go recovery.Go(func() error {
+	panic("panic")
+})
+```
+
+Panics are given to the error handling function as a `PanicError`.
+The global error handling function can be set with the variable recovery.ErrorHandler or can be set locally by using GoHandler
+
+```
 errHandler := func(err error) {
         switch r := err.(type) {
 	// A Go panic
@@ -20,7 +35,7 @@ errHandler := func(err error) {
 	}
 }
 
-recovery.Go(errHandler, func() error {
+recovery.GoHandler(errHandler, func() error {
 		panic("panic")
 		return nil
 })
@@ -28,7 +43,7 @@ recovery.Go(errHandler, func() error {
 
 # Function panic recovery
 
-Recover a panic for a normal function, no go routines.
+Recover a panic for a normal function call and return the error.
 
 ``` go
 err = recovery.Call(func() error {
@@ -36,4 +51,5 @@ err = recovery.Call(func() error {
 })
 ```
 
-There are also variants that allow the called function to return results in addition to an error: Call1, Call2, Call3.
+There are also variants that allow the called function to return results in addition to an error: `Call1`, `Call2`, `Call3`.
+There are two helpers `Throw` and `Throwf` for panicing an error without wrapping it as a `PanicError`.

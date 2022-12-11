@@ -24,35 +24,8 @@ func TestCall(t *testing.T) {
 	assert.Equal(t, "panic", err.Error())
 }
 
-func TestGo(t *testing.T) {
-	noError := func(err error) {
-		assert.Nil(t, err)
-	}
-	errHappened := func(err error) {
-		assert.NotNil(t, err)
-	}
-	recovery.Go(noError, func() error {
-		return nil
-	})
-	recovery.Go(errHappened, func() error {
-		panic("panic")
-	})
-
-	wait := make(chan struct{})
-	go recovery.Go(noError, func() error {
-		wait <- struct{}{}
-		return nil
-	})
-	go recovery.Go(errHappened, func() error {
-		defer func() { wait <- struct{}{} }()
-		panic("panic")
-	})
-	<-wait
-	<-wait
-}
-
 func TestCallThrown(t *testing.T) {
-	thrown := recovery.ThrownError{Err: fmt.Errorf("thrown error")}
+	thrown := fmt.Errorf("thrown error")
 	err := recovery.Call(func() error {
 		return thrown
 	})
@@ -60,7 +33,8 @@ func TestCallThrown(t *testing.T) {
 	assert.Equal(t, thrown, err)
 	assert.Equal(t, "thrown error", err.Error())
 	err = recovery.Call(func() error {
-		panic(thrown)
+		recovery.Throw(thrown)
+		return nil
 	})
 	assert.NotNil(t, err)
 	assert.Equal(t, thrown, err)
@@ -71,4 +45,63 @@ func TestCallThrown(t *testing.T) {
 	})
 	assert.NotNil(t, err)
 	assert.Equal(t, recovery.PanicError{Panic: "panic"}, err)
+}
+
+func TestGoHandler(t *testing.T) {
+	noError := func(err error) {
+		assert.Nil(t, err)
+	}
+	errHappened := func(err error) {
+		assert.NotNil(t, err)
+	}
+	recovery.GoHandler(noError, func() error {
+		return nil
+	})
+	recovery.GoHandler(errHappened, func() error {
+		panic("panic")
+	})
+
+	wait := make(chan struct{})
+	go recovery.GoHandler(noError, func() error {
+		wait <- struct{}{}
+		return nil
+	})
+	go recovery.GoHandler(errHappened, func() error {
+		defer func() { wait <- struct{}{} }()
+		panic("panic")
+	})
+	<-wait
+	<-wait
+}
+
+func TestGo(t *testing.T) {
+	noError := func(err error) {
+		assert.Nil(t, err)
+	}
+	errHappened := func(err error) {
+		assert.NotNil(t, err)
+	}
+
+	recovery.ErrorHandler = noError
+	recovery.Go(func() error {
+		return nil
+	})
+	recovery.ErrorHandler = errHappened
+	recovery.Go(func() error {
+		panic("panic")
+	})
+
+	wait := make(chan struct{})
+	recovery.ErrorHandler = noError
+	go recovery.Go(func() error {
+		wait <- struct{}{}
+		return nil
+	})
+	<-wait
+	recovery.ErrorHandler = errHappened
+	go recovery.Go(func() error {
+		defer func() { wait <- struct{}{} }()
+		panic("panic")
+	})
+	<-wait
 }
