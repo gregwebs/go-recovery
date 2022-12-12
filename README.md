@@ -60,9 +60,14 @@ There are two helpers `Throw` and `Throwf` for panicing an error that will avoid
 
 There are semgrep rules to help with upgrading existing go routines:
 
-	for rule in ../go-recovery/codemod/semgrep/* ; do ; semgrep --config $rule ; done
+	comby -config ../go-recovery/codemod/comby/upgrade.toml -f myfile.go
+	goimports -w myfile.go
+	gofmt -w myfile.go
 
-However, there is an issue with the upgrade rules that could introduce defects.
-For non-anonymous function and method calls, it delays the evaluation of the arguments
+Existing `return` statements in go routines should be manually changed to `return nil`.
 
-Additionally, it doesn't upgrade anonymous functions that are called with arguments, e.g. `go func(x int) {}(1)`.
+The upgrades are conservative and will insert function wrapping that is sometimes unnecesssary.
+In a go statement the arguments to a function, including the method receiver are evaluated immediately.
+In `go fn(x)`, x is evaluated immediately. The function wrapping with `go func(x){}(x)` maintains the property of immediate evaluation.
+If the variable is immutable or copied before changed, then immediate evaluation is unnecessary.
+

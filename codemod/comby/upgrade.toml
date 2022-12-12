@@ -1,0 +1,74 @@
+[anon-func-args]
+match='''
+go func(:[argsRecv]) {
+	:[body]
+}(:[argsGiven])'''
+rule='''
+where match :[body] {
+| ":[~recovery\.Go]" -> false
+| ":[_]" -> true
+}'''
+rewrite='''
+go func(:[argsRecv]) {
+	recovery.Go(func() error {
+		:[body]
+		return nil
+	})
+}(:[argsGiven])'''
+
+[anon-func]
+match='''
+go func() {
+	:[body]
+}()'''
+rule='''
+where match :[body] {
+| ":[~recovery\.Go]" -> false
+| ":[_]" -> true
+}'''
+rewrite='''
+go recovery.Go(func() error {
+	:[body]
+	return nil
+})'''
+
+[func-args]
+match='''
+go [:fn](:[args])'''
+rewrite='''
+go [:fn](:[args]){
+	recovery.Go(func() error {
+		:[fn](:[args])
+		return nil
+	})
+}(:[args])'''
+
+[func]
+match='''
+go [:fn]()'''
+rewrite='''
+go recovery.Go(func() error {
+	[:fn]()
+})'''
+
+[method-args]
+match='''
+go (:recv).[:fn](:[args])'''
+rewrite='''
+go [:fn](:[recv], :[args]){
+	recovery.Go(func() error {
+		:[recv].:[fn](:[args])
+		return nil
+	})
+}(:[recv], :[args])'''
+
+[method]
+match='''
+go (:recv).[:fn]()'''
+rewrite='''
+go [:fn](:[recv]){
+	recovery.Go(func() error {
+		:[recv].:[fn]()
+		return nil
+	})
+}(:[recv])'''
