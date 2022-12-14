@@ -1,6 +1,7 @@
 package recovery_test
 
 import (
+	"errors"
 	"fmt"
 	"testing"
 
@@ -37,14 +38,14 @@ func TestCallThrown(t *testing.T) {
 		return nil
 	})
 	assert.NotNil(t, err)
-	assert.Equal(t, thrown, err)
+	assert.Equal(t, thrown, errors.Unwrap(err))
 	assert.Equal(t, "thrown error", err.Error())
 
 	err = recovery.Call(func() error {
 		panic("panic")
 	})
 	assert.NotNil(t, err)
-	assert.Equal(t, recovery.PanicError{Panic: "panic"}, err)
+	assert.Equal(t, recovery.PanicError{Panic: "panic"}, errors.Unwrap(err))
 }
 
 func TestGoHandler(t *testing.T) {

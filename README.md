@@ -28,18 +28,15 @@ The global error handling function can be set with the variable recovery.ErrorHa
 
 ```
 errHandler := func(err error) {
-        switch r := err.(type) {
-	// A Go panic
-	case PanicError:
-		log.Printf("go routine panic %v", r.Panic)
-	default:
-		log.Printf("go routine error %+v", err)
-	}
+	sentry.CaptureException(err)
 }
 
+// global
+recovery.ErrorHandler = errHandler
+
+// local
 recovery.GoHandler(errHandler, func() error {
 		panic("panic")
-		return nil
 })
 ```
 
@@ -58,7 +55,7 @@ There are two helpers `Throw` and `Throwf` for panicing an error that will avoid
 
 # Codemod
 
-There are semgrep rules to help with upgrading existing go routines:
+There are comby rules to help with upgrading existing go routines:
 
 	comby -config ../go-recovery/codemod/comby/upgrade.toml -f myfile.go
 	goimports -w myfile.go
@@ -69,5 +66,5 @@ Existing `return` statements in go routines should be manually changed to `retur
 The upgrades are conservative and will insert function wrapping that is sometimes unnecesssary.
 In a go statement the arguments to a function, including the method receiver are evaluated immediately.
 In `go fn(x)`, x is evaluated immediately. The function wrapping with `go func(x){}(x)` maintains the property of immediate evaluation.
-If the variable is immutable or copied before changed, then immediate evaluation is unnecessary.
+If the variable is immutable or copied before changed, then immediate evaluation is unnecessary, but you will need to inspect this manually.
 

@@ -3,11 +3,17 @@ package recovery
 import (
 	"fmt"
 	"log"
+
+	"github.com/gregwebs/errors"
 )
 
 // A Panic that was converted to an error.
 type PanicError struct {
-	Panic any
+	Panic interface{}
+}
+
+func newPanicError(r interface{}) error {
+	return errors.AddStack(PanicError{Panic: r})
 }
 
 func (p PanicError) Unwrap() error {
@@ -50,7 +56,7 @@ func Call(fn func() error) (err error) {
 		if !returned && err == nil {
 			// the case of panic(nil)
 			if r == nil {
-				r = PanicError{Panic: r}
+				r = newPanicError(r)
 			}
 			err = ToError(r)
 		}
@@ -98,7 +104,12 @@ var ErrorHandler func(error) = DefaultErrorHandler
 
 // The DefaultErrorHandler prints the error with log.Printf
 func DefaultErrorHandler(err error) {
-	log.Printf("go routine error: %+v", err)
+	pe := PanicError{}
+	if errors.As(err, &pe) {
+		log.Printf("go routine panic: %+v", err)
+	} else {
+		log.Printf("go routine error: %+v", err)
+	}
 }
 
 // Go is designed to use as an entry point to a go routine.
@@ -129,19 +140,37 @@ func GoHandler(errorHandler func(err error), fn func() error) {
 
 // Wrap panic values in a PanicError.
 // nil is returned as nil so this function can be called direclty with the result of recover()
-// A ThrownError or a PanicError are returned as is.
+// A PanicError is returned as is and a ThrownError is returned unwrapped.
 func ToError(r interface{}) error {
 	switch r := r.(type) {
-	// A Go panic
-	case PanicError:
-		return r
-	case ThrownError:
-		return r.Err
 	case nil:
 		return nil
-	default:
-		return PanicError{Panic: r}
+
+	// Unwrap a a ThrownError
+	case ThrownError:
+		return r.Unwrap()
+	case *ThrownError:
+		if r == nil {
+			return nil
+		}
+		return r.Unwrap()
+
+	// return a PanicError as is
+	case *PanicError:
+		if r == nil {
+			return nil
+		}
+		return *r
+
+	case error:
+		pe := PanicError{}
+		if errors.As(r, &pe) {
+			return r
+		}
 	}
+
+	// Convert a panic value to an error
+	return newPanicError(r)
 }
 
 // Throw will panic an error as a ThrownError.
@@ -154,10 +183,10 @@ func ToError(r interface{}) error {
 //		}
 //	}
 func Throw(err error) {
-	panic(ThrownError{Err: err})
+	panic(ThrownError{Err: errors.AddStack(err)})
 }
 
 // A convenience function for calling Throw(fmt.Errorf(...))
 func Throwf(format string, args ...interface{}) {
-	Throw(fmt.Errorf(format, args...))
+	panic(ThrownError{Err: errors.Errorf(format, args...)})
 }
