@@ -3,7 +3,7 @@ module github.com/gregwebs/go-recovery
 go 1.18
 
 require (
-	github.com/gregwebs/errors v1.0.0
+	github.com/gregwebs/errors v1.1.0
 	github.com/stretchr/testify v1.8.1
 )
 

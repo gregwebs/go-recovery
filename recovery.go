@@ -12,8 +12,8 @@ type PanicError struct {
 	Panic interface{}
 }
 
-func newPanicError(r interface{}) error {
-	return errors.AddStack(PanicError{Panic: r})
+func newPanicError(r interface{}, skip int) error {
+	return errors.AddStackSkip(PanicError{Panic: r}, skip)
 }
 
 func (p PanicError) Unwrap() error {
@@ -56,7 +56,7 @@ func Call(fn func() error) (err error) {
 		if !returned && err == nil {
 			// the case of panic(nil)
 			if r == nil {
-				r = newPanicError(r)
+				r = newPanicError(r, 2)
 			}
 			err = ToError(r)
 		}
@@ -170,7 +170,7 @@ func ToError(r interface{}) error {
 	}
 
 	// Convert a panic value to an error
-	return newPanicError(r)
+	return newPanicError(r, 3)
 }
 
 // Throw will panic an error as a ThrownError.
