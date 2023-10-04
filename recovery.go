@@ -146,7 +146,7 @@ func ToError(r interface{}) error {
 	case nil:
 		return nil
 
-	// Unwrap a a ThrownError
+	// Unwrap a ThrownError
 	case ThrownError:
 		return r.Unwrap()
 	case *ThrownError:
