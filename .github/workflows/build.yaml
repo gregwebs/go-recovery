@@ -1,0 +1,58 @@
+# Build, test, and lint changes
+name: Build
+
+on:
+  merge_group:
+    types: [checks_requested]
+  pull_request:
+  push:
+
+jobs:
+  govulncheck:
+    name: govulncheck
+    runs-on: ubuntu-latest
+    steps:
+      - id: govulncheck
+        uses: golang/govulncheck-action@v1
+        with:
+           go-version-input: 1.21.1
+           go-package: ./...
+           cache: true
+
+  lint:
+    name: lint
+    runs-on: ubuntu-latest
+    steps:
+      - name: checkout
+        uses: actions/checkout@v3
+      - name: Golang
+        uses: actions/setup-go@v4
+        with:
+          go-version: '1.21.1'
+          cache: false
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@v3
+        with:
+          # Require: The version of golangci-lint to use.
+          # When `install-mode` is `binary` (default) the value can be v1.2 or v1.2.3 or `latest` to use the latest version.
+          # When `install-mode` is `goinstall` the value can be v1.2.3, `latest`, or the hash of a commit.
+          version: v1.54
+          args: --timeout=5m --allow-parallel-runners
+
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: checkout
+        uses: actions/checkout@v3
+
+      - name: Set build variables
+        run: echo "VERSION=`git rev-parse --short HEAD`" >> $GITHUB_ENV
+
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: '1.21'
+
+      - name: build and test
+        shell: bash
+        run: go build ./... && go test -v ./...
