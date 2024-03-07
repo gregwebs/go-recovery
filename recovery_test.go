@@ -1,28 +1,79 @@
 package recovery_test
 
 import (
-	"errors"
 	"fmt"
 	"testing"
 
+	"github.com/gregwebs/errors"
 	"github.com/gregwebs/go-recovery"
 	"github.com/stretchr/testify/assert"
 )
 
-func TestCall(t *testing.T) {
+func TestCallNil(t *testing.T) {
+	// return nil- no error
 	err := recovery.Call(func() error {
 		return nil
 	})
 	assert.Nil(t, err)
-	err = recovery.Call(func() error {
+	assert.False(t, errors.HasStack(err))
+}
+
+func TestCallError(t *testing.T) {
+	// return a basic error
+	err := recovery.Call(func() error {
 		return fmt.Errorf("return error")
 	})
 	assert.NotNil(t, err)
+	assert.False(t, errors.HasStack(err))
+
+	// return an error with stack trace
 	err = recovery.Call(func() error {
+		return errors.Errorf("return error with stack")
+	})
+	assert.NotNil(t, err)
+	assert.True(t, errors.HasStack(err))
+}
+
+func TestCallPanicValue(t *testing.T) {
+	// panic string
+	err := recovery.Call(func() error {
 		panic("panic")
 	})
 	assert.NotNil(t, err)
-	assert.Equal(t, "panic", err.Error())
+	assert.True(t, errors.HasStack(err))
+	assert.Equal(t, "panic: panic", err.Error())
+
+	// panic nil
+	err = recovery.Call(func() error {
+		panic(nil)
+	})
+	assert.NotNil(t, err)
+	assert.True(t, errors.HasStack(err))
+	assert.Equal(t, "panic: panic called with nil argument", err.Error())
+}
+
+var standardErr = fmt.Errorf("error standard")
+
+func TestCallPanicError(t *testing.T) {
+	// panic standard error
+	err := recovery.Call(func() error {
+		panic(standardErr)
+	})
+	assert.NotNil(t, err)
+	assert.IsType(t, errors.AddStack(standardErr), err)
+	assert.True(t, errors.HasStack(err))
+	assert.Equal(t, "panic: error standard", err.Error())
+
+	// panic error
+	err = recovery.Call(func() error {
+		panic(errors.New("error with stack"))
+	})
+	assert.IsType(t, recovery.PanicError{}, err)
+	assert.NotNil(t, err)
+	assert.True(t, errors.HasStack(err))
+	assert.Equal(t, "panic: error with stack", err.Error())
+	fullPrint := fmt.Sprintf("%+v", err)
+	assert.Contains(t, fullPrint, "recovery_test.go")
 }
 
 func TestCallThrown(t *testing.T) {
