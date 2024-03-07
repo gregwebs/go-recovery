@@ -2,6 +2,7 @@ package recovery
 
 import (
 	"fmt"
+	"io"
 	"log"
 
 	"github.com/gregwebs/errors"
@@ -25,9 +26,35 @@ func (p PanicError) Unwrap() error {
 
 func (p PanicError) Error() string {
 	if err := p.Unwrap(); err != nil {
-		return err.Error()
+		return "panic: " + err.Error()
 	} else {
-		return fmt.Sprintf("%v", p.Panic)
+		return "panic: " + fmt.Sprintf("%v", p.Panic)
+	}
+}
+
+// This works with the extended syntax "%+v" for printing stack traces
+func (p PanicError) Format(s fmt.State, verb rune) {
+	switch verb {
+	case 'v':
+		if s.Flag('+') {
+			if _, errWrite := fmt.Fprint(s, "panic: "); errWrite != nil {
+				errors.HandleWriteError(errWrite)
+			}
+			p := p.Panic
+			if f, ok := p.(fmt.Formatter); ok {
+				f.Format(s, verb)
+			} else {
+				if _, errWrite := fmt.Fprintf(s, "%+v\n", p); errWrite != nil {
+					errors.HandleWriteError(errWrite)
+				}
+			}
+			return
+		}
+		fallthrough
+	case 's', 'q':
+		if _, errWrite := io.WriteString(s, p.Error()); errWrite != nil {
+			errors.HandleWriteError(errWrite)
+		}
 	}
 }
 
@@ -156,6 +183,8 @@ func ToError(r interface{}) error {
 		return r.Unwrap()
 
 	// return a PanicError as is
+	case PanicError:
+		return r
 	case *PanicError:
 		if r == nil {
 			return nil

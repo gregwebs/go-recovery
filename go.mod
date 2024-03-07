@@ -1,9 +1,11 @@
 module github.com/gregwebs/go-recovery
 
-go 1.18
+go 1.21
+
+toolchain go1.21.5
 
 require (
-	github.com/gregwebs/errors v1.1.0
+	github.com/gregwebs/errors v1.2.2
 	github.com/stretchr/testify v1.8.1
 )
 
