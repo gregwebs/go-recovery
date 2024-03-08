@@ -131,12 +131,7 @@ var ErrorHandler func(error) = DefaultErrorHandler
 
 // The DefaultErrorHandler prints the error with log.Printf
 func DefaultErrorHandler(err error) {
-	pe := PanicError{}
-	if errors.As(err, &pe) {
-		log.Printf("go routine panic: %+v", err)
-	} else {
-		log.Printf("go routine error: %+v", err)
-	}
+	log.Printf("%+v", err)
 }
 
 // Go is designed to use as an entry point to a go routine.
