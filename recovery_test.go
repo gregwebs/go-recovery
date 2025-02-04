@@ -1,10 +1,10 @@
 package recovery_test
 
 import (
+	"errors"
 	"fmt"
 	"testing"
 
-	"github.com/gregwebs/errors"
 	"github.com/gregwebs/go-recovery"
 	"github.com/stretchr/testify/assert"
 )
@@ -15,23 +15,24 @@ func TestCallNil(t *testing.T) {
 		return nil
 	})
 	assert.Nil(t, err)
-	assert.False(t, errors.HasStack(err))
+}
+
+func HasStack(err error) bool {
+	if errWithStack, ok := err.(interface{ HasStack() bool }); ok {
+		return errWithStack.HasStack()
+	}
+	return false
 }
 
 func TestCallError(t *testing.T) {
+	var errOrig error
 	// return a basic error
 	err := recovery.Call(func() error {
-		return fmt.Errorf("return error")
+		errOrig = fmt.Errorf("return error")
+		return errOrig
 	})
 	assert.NotNil(t, err)
-	assert.False(t, errors.HasStack(err))
-
-	// return an error with stack trace
-	err = recovery.Call(func() error {
-		return errors.Errorf("return error with stack")
-	})
-	assert.NotNil(t, err)
-	assert.True(t, errors.HasStack(err))
+	assert.Equal(t, errOrig, err)
 }
 
 func TestCallPanicValue(t *testing.T) {
@@ -40,7 +41,7 @@ func TestCallPanicValue(t *testing.T) {
 		panic("panic")
 	})
 	assert.NotNil(t, err)
-	assert.True(t, errors.HasStack(err))
+	assert.True(t, HasStack(err))
 	assert.Equal(t, "panic: panic", err.Error())
 
 	// panic nil
@@ -48,7 +49,7 @@ func TestCallPanicValue(t *testing.T) {
 		panic(nil)
 	})
 	assert.NotNil(t, err)
-	assert.True(t, errors.HasStack(err))
+	assert.True(t, HasStack(err))
 	assert.Equal(t, "panic: panic called with nil argument", err.Error())
 }
 
@@ -60,8 +61,8 @@ func TestCallPanicError(t *testing.T) {
 		panic(standardErr)
 	})
 	assert.NotNil(t, err)
-	assert.IsType(t, errors.AddStack(standardErr), err)
-	assert.True(t, errors.HasStack(err))
+	assert.IsType(t, recovery.PanicError{}, err)
+	assert.True(t, HasStack(err))
 	assert.Equal(t, "panic: error standard", err.Error())
 
 	// panic error
@@ -70,7 +71,7 @@ func TestCallPanicError(t *testing.T) {
 	})
 	assert.IsType(t, recovery.PanicError{}, err)
 	assert.NotNil(t, err)
-	assert.True(t, errors.HasStack(err))
+	assert.True(t, HasStack(err))
 	assert.Equal(t, "panic: error with stack", err.Error())
 	fullPrint := fmt.Sprintf("%+v", err)
 	assert.Contains(t, fullPrint, "recovery_test.go")
@@ -96,7 +97,8 @@ func TestCallThrown(t *testing.T) {
 		panic("panic")
 	})
 	assert.NotNil(t, err)
-	assert.Equal(t, recovery.PanicError{Panic: "panic"}, errors.Unwrap(err))
+	assert.IsType(t, recovery.PanicError{}, err)
+	assert.Equal(t, "panic: panic", err.Error())
 }
 
 func TestGoHandler(t *testing.T) {
