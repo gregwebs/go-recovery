@@ -26,7 +26,7 @@ go recovery.Go(func() error {
 Panics are given to the error handling function as a `PanicError`.
 The global error handling function can be set with the variable recovery.ErrorHandler or can be set locally by using GoHandler
 
-```
+``` go
 errHandler := func(err error) {
 	sentry.CaptureException(err)
 }
