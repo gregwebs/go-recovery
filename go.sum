@@ -1,8 +1,8 @@
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
-github.com/gregwebs/errors v1.2.2 h1:JQG47s42qKzMPdIT8pmCkZ+2Trhoyskgimxbyp7lD+U=
-github.com/gregwebs/errors v1.2.2/go.mod h1:1NkCObP7+scylHlC69lwHl2ACOHwktWYrZV4EJDEl6g=
+github.com/gregwebs/stackfmt v0.1.1 h1:bqHZv69OGARsyNPD4tJfkJnu5oWjA86dISQKKfFt98A=
+github.com/gregwebs/stackfmt v0.1.1/go.mod h1:MQWvus3s9juULflTEiFIllieKiz7AnX7i4HWyPOs2nQ=
 github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZbAQM=
 github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
 github.com/stretchr/objx v0.1.0/go.mod h1:HFkY916IF+rwdDfMAkV7OtwuqBVzrE8GR6GFx+wExME=

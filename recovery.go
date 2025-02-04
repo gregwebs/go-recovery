@@ -1,20 +1,22 @@
 package recovery
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"log"
 
-	"github.com/gregwebs/errors"
+	"github.com/gregwebs/stackfmt"
 )
 
 // A Panic that was converted to an error.
 type PanicError struct {
 	Panic interface{}
+	Stack stackfmt.Stack
 }
 
 func newPanicError(r interface{}, skip int) error {
-	return errors.AddStackSkip(PanicError{Panic: r}, skip)
+	return PanicError{Panic: r, Stack: stackfmt.NewStackSkip(skip)}
 }
 
 func (p PanicError) Unwrap() error {
@@ -32,28 +34,45 @@ func (p PanicError) Error() string {
 	}
 }
 
+func (p PanicError) HasStack() bool {
+	return true
+}
+
+func (p PanicError) StackTrace() stackfmt.StackTrace {
+	return p.Stack.StackTrace()
+}
+
+func (p PanicError) StackTraceFormat(s fmt.State, v rune) {
+	p.Stack.FormatStackTrace(s, v)
+}
+
 // This works with the extended syntax "%+v" for printing stack traces
 func (p PanicError) Format(s fmt.State, verb rune) {
 	switch verb {
 	case 'v':
 		if s.Flag('+') {
 			if _, errWrite := fmt.Fprint(s, "panic: "); errWrite != nil {
-				errors.HandleWriteError(errWrite)
+				handleWriteError(errWrite)
 			}
-			p := p.Panic
-			if f, ok := p.(fmt.Formatter); ok {
+			if f, ok := p.Panic.(fmt.Formatter); ok {
 				f.Format(s, verb)
 			} else {
-				if _, errWrite := fmt.Fprintf(s, "%+v\n", p); errWrite != nil {
-					errors.HandleWriteError(errWrite)
+				if _, errWrite := fmt.Fprintf(s, "%+v", p.Panic); errWrite != nil {
+					handleWriteError(errWrite)
 				}
+			}
+			if p.Stack != nil {
+				if _, errWrite := io.WriteString(s, "\n"); errWrite != nil {
+					handleWriteError(errWrite)
+				}
+				p.Stack.FormatStackTrace(s, verb)
 			}
 			return
 		}
 		fallthrough
 	case 's', 'q':
 		if _, errWrite := io.WriteString(s, p.Error()); errWrite != nil {
-			errors.HandleWriteError(errWrite)
+			handleWriteError(errWrite)
 		}
 	}
 }
@@ -61,7 +80,8 @@ func (p PanicError) Format(s fmt.State, verb rune) {
 // An error that was intentionally thrown via panic
 // Pass it through without wrapping it as a PanicError
 type ThrownError struct {
-	Err error
+	Err   error
+	Stack stackfmt.Stack
 }
 
 func (e ThrownError) Unwrap() error {
@@ -70,6 +90,18 @@ func (e ThrownError) Unwrap() error {
 
 func (e ThrownError) Error() string {
 	return e.Unwrap().Error()
+}
+
+func (e ThrownError) HasStack() bool {
+	return true
+}
+
+func (e ThrownError) StackTrace() stackfmt.StackTrace {
+	return e.Stack.StackTrace()
+}
+
+func (e ThrownError) StackTraceFormat(s fmt.State, v rune) {
+	e.Stack.FormatStackTrace(s, v)
 }
 
 // Call is a helper function which allows you to easily recover from panics in the given function parameter "fn".
@@ -168,18 +200,16 @@ func ToError(r interface{}) error {
 	case nil:
 		return nil
 
-	// Unwrap a ThrownError
+	// return a ThrownError or PanicError as is
 	case ThrownError:
-		return r.Unwrap()
+		return r
+	case PanicError:
+		return r
 	case *ThrownError:
 		if r == nil {
 			return nil
 		}
-		return r.Unwrap()
-
-	// return a PanicError as is
-	case PanicError:
-		return r
+		return *r
 	case *PanicError:
 		if r == nil {
 			return nil
@@ -207,10 +237,20 @@ func ToError(r interface{}) error {
 //		}
 //	}
 func Throw(err error) {
-	panic(ThrownError{Err: errors.AddStack(err)})
+	panic(ThrownError{Err: err, Stack: stackfmt.NewStackSkip(1)})
 }
 
 // A convenience function for calling Throw(fmt.Errorf(...))
 func Throwf(format string, args ...interface{}) {
-	panic(ThrownError{Err: errors.Errorf(format, args...)})
+	panic(ThrownError{Err: fmt.Errorf(format, args...), Stack: stackfmt.NewStackSkip(1)})
+}
+
+// HandleFmtWriteError handles (rare) errors when writing to fmt.State.
+// It defaults to printing the errors.
+func HandleFmtWriteError(handler func(err error)) {
+	handleWriteError = handler
+}
+
+var handleWriteError = func(err error) {
+	log.Println(err)
 }
